@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Othello ⚡ Reversi</title>
+    <!-- Google Fontsの導入 -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --primary: #F7931A; /* Bitcoinオレンジ */
+            --primary-hover: #e07f10;
+            --text-color: #ffffff;
+            --text-muted: #aaaaaa;
+            --board-green: #2e7d32;
+            --board-border: #1b5e20;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Rajdhani', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            border: 2px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 24px;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 16px;
+            color: var(--primary);
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(247, 147, 26, 0.4);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* パネル（画面切り替え用） */
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* スタート画面 */
+        .rules {
+            background-color: #111;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: left;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .rules ul {
+            padding-left: 20px;
+        }
+
+        .difficulty-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .difficulty-select {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .btn-diff {
+            background-color: #222;
+            border: 2px solid #444;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .btn-diff:hover {
+            border-color: var(--primary);
+        }
+
+        .btn-diff.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+            box-shadow: 0 0 10px rgba(247, 147, 26, 0.4);
+        }
+
+        /* 共通ボタン */
+        .btn-main {
+            display: block;
+            width: 100%;
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-main:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-sub {
+            display: block;
+            width: 100%;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 10px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-sub:hover {
+            background-color: #444;
+        }
+
+        /* ゲーム中スコアボード */
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #111;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+
+        .player-stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        #stat-black { justify-content: flex-start; }
+        #stat-white { justify-content: flex-end; }
+
+        .disc-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+
+        .disc-icon.black {
+            background: radial-gradient(circle at 30% 30%, #555, #000 80%);
+            border: 1px solid #000;
+        }
+
+        .disc-icon.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #bbb 80%);
+            border: 1px solid #999;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        #stat-white .player-info {
+            text-align: right;
+        }
+
+        .player-name {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .player-score {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .turn-box {
+            background-color: var(--primary);
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(247, 147, 26, 0.3);
+            transition: all 0.3s;
+        }
+
+        .turn-box.white-turn {
+            background-color: #fff;
+            color: #000;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        /* オセロ盤面 */
+        .board-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1 / 1;
+            background-color: var(--board-border);
+            border: 4px solid #111;
+            border-radius: 8px;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .cell {
+            background-color: var(--board-green);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+
+        .cell:hover {
+            background-color: #26702a;
+        }
+
+        .valid-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: rgba(247, 147, 26, 0.6);
+            box-shadow: 0 0 8px rgba(247, 147, 26, 0.8);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.85); opacity: 0.6; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(0.85); opacity: 0.6; }
+        }
+
+        .disc {
+            width: 82%;
+            height: 82%;
+            border-radius: 50%;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            animation: spawn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+            transition: transform 0.5s ease;
+        }
+
+        .disc.black {
+            background: radial-gradient(circle at 30% 30%, #444, #111 85%);
+            border: 1px solid #000;
+        }
+
+        .disc.white {
+            background: radial-gradient(circle at 30% 30%, #ffffff, #cccccc 85%);
+            border: 1px solid #aaa;
+        }
+
+        @keyframes spawn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+
+        /* 決済・スコア記録エリア */
+        .result-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 20px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .score-calc {
+            background-color: #111;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.8;
+            border: 1px solid #333;
+        }
+
+        /* インボイス・QR表示エリア */
+        .invoice-box {
+            background-color: #111;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+        }
+
+        .qr-img {
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px auto;
+            display: block;
+            width: 200px;
+            height: 200px;
+        }
+
+        .inv-input {
+            width: 100%;
+            background-color: #222;
+            color: #ccc;
+            border: 1px solid #444;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* リーダーボード */
+        .lb-list {
+            background-color: #111;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 260px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .lb-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px dashed #333;
+            font-size: 14px;
+        }
+
+        .lb-row:last-child {
+            border-bottom: none;
+        }
+
+        .lb-rank {
+            color: var(--primary);
+            font-weight: bold;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 50%;
+            text-align: left;
+        }
+
+        .lb-diff {
+            color: #777;
+            font-size: 11px;
+        }
+
+        .lb-score {
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background-color: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .support-banner {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 15px;
+            cursor: pointer;
+        }
+        .support-banner:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- タイトル表示 -->
+    <h1>BITCOIN OTHELLO ⚡</h1>
+    <div class="subtitle">避けて通れぬAIの計略。実力でSatsを刻め！</div>
+
+    <!-- 1. スタート画面 -->
+    <div id="panel-start" class="panel active">
+        <div class="rules">
+            <strong>📖 ルール＆特徴:</strong>
+            <ul>
+                <li>あなたが<strong>黒（先手）</strong>、AIが<strong>白（後手）</strong>です。</li>
+                <li>「EASY」「MEDIUM」「HARD」から難易度を選択。</li>
+                <li>勝利すると<strong>(残りの石の差分) × 難易度ボーナス</strong>のポイントが付与されます。</li>
+                <li>勝利時、100 Satsを支払うことでリーダーボードに結果を永続記録できます！</li>
+            </ul>
+        </div>
+        
+        <div class="difficulty-title">難易度を選択</div>
+        <div class="difficulty-select">
+            <button class="btn-diff active" onclick="setDifficulty('easy', this)">EASY</button>
+            <button class="btn-diff" onclick="setDifficulty('medium', this)">MEDIUM</button>
+            <button class="btn-diff" onclick="setDifficulty('hard', this)">HARD</button>
+        </div>
+
+        <button class="btn-main" onclick="initGame()">PLAY FREE</button>
+        <button class="btn-sub" onclick="showLeaderboard()">🏆 VIEW RANKING</button>
+    </div>
+
+    <!-- 2. ゲーム中画面 -->
+    <div id="panel-game" class="panel">
+        <div class="scoreboard">
+            <div class="player-stat" id="stat-black">
+                <div class="disc-icon black"></div>
+                <div class="player-info">
+                    <span class="player-name">YOU</span>
+                    <span class="player-score" id="black-score">2</span>
+                </div>
+            </div>
+            <div class="turn-box" id="turn-text">YOUR TURN</div>
+            <div class="player-stat" id="stat-white">
+                <div class="player-info">
+                    <span class="player-name" id="ai-level-label">AI (EASY)</span>
+                    <span class="player-score" id="white-score">2</span>
+                </div>
+                <div class="disc-icon white"></div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div id="board"></div>
+        </div>
+
+        <button class="btn-sub" onclick="quitGame()">QUIT GAME</button>
+    </div>
+
+    <!-- 3. 結果画面 -->
+    <div id="panel-result" class="panel">
+        <div class="result-title" id="result-status">YOU WIN! 🎉</div>
+        
+        <div class="score-calc" id="result-score-calc">
+            Score: (40 - 24) x 100 = 1600 pts
+        </div>
+
+        <!-- アクションボタン群 -->
+        <div id="result-buttons">
+            <button class="btn-main" id="btn-save-score" onclick="openLeaderboardPay()">🏆 SAVE SCORE (100 SATS)</button>
+            <button class="btn-sub" onclick="shareTwitter()">🐦 SHARE ON 𝕏</button>
+            <button class="btn-sub" onclick="backToMenu()">BACK TO MENU</button>
+        </div>
+
+        <!-- 決済手続きエリア -->
+        <div id="lb-invoice-area" class="invoice-box" style="display: none;">
+            <div style="font-size: 13px; font-weight: bold; color: var(--primary);">PAY TO RECORD SCORE</div>
+            <img id="lb-qr" class="qr-img" src="" alt="Lightning QR">
+            <input id="lb-inv-text" class="inv-input" type="text" readonly onclick="copyInvoice()">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">タップしてインボイスをコピー</div>
+            <a id="lb-wallet-link" class="btn-main" style="text-decoration:none; display:block; text-align:center; margin-bottom:8px;" href="#">⚡ OPEN WALLET</a>
+            <button class="btn-sub" onclick="cancelLbPay()">CANCEL</button>
+        </div>
+
+        <!-- 名前入力エリア -->
+        <div id="lb-name-area" class="invoice-box" style="display: none;">
+            <div style="font-weight: bold; color: #4caf50; margin-bottom: 10px;">⚡ PAYMENT SUCCESSFUL! ⚡</div>
+            <div style="font-size: 13px; margin-bottom: 12px;">リーダーボードに載せる名前を入力してください</div>
+            <input id="player-name" type="text" placeholder="Your Name" maxlength="20">
+            <button class="btn-main" onclick="submitScore()">SUBMIT SCORE</button>
+        </div>
+    </div>
+
+    <!-- 4. ランキング画面 -->
+    <div id="panel-leaderboard" class="panel">
+        <div class="result-title" style="color: var(--primary); font-size: 16px; margin-bottom: 15px;">🏆 CHAMPIONS LEAGUE</div>
+        <div class="lb-list" id="lb-list">
+            <!-- ランキング行 -->
+        </div>
+        <button class="btn-main" onclick="backToMenu()">BACK TO MENU</button>
+    </div>
+
+    <!-- zaps -->
+    <div class="support-banner" onclick="zapDeveloper()">⚡ Support creator with 10 sats</div>
+</div>
+
+<script>
+// ==========================================-
+// 🚨 設定情報
+// ==========================================-
+// Google Apps ScriptのURL（空の場合はLocalStorageにデータを一時保持します）
+const GAS_URL = ""; 
+
+// LNbits支払いゲートウェイ設定 (デフォルトはdemo.lnbits.com)
+// ⚠️ 実際に利用する際はご自身のLNbitsのInvoice/Read API Keyに差し替えてください。
+const LNBITS_API_URL = "https://demo.lnbits.com/api/v1/payments";
+const LNBITS_INVOICE_KEY = "67e5b0ad270f44d19e6d768bb3314e49"; 
+const RECORD_COST_SATS = 100;
+
+// ==========================================-
+// オセロ思考エンジン・評価テーブル
+// ==========================================-
+const EVAL_MATRIX = [
+    [100, -20,  10,   5,   5,  10, -20, 100],
+    [-20, -50,  -2,  -2,  -2,  -2, -50, -20],
+    [ 10,  -2,   5,   1,   1,   5,  -2,  10],
+    [  5,  -2,   1,   2,   2,   1,  -2,   5],
+    [  5,  -2,   1,   2,   2,   1,  -2,   5],
+    [ 10,  -2,   5,   1,   1,   5,  -2,  10],
+    [-20, -50,  -2,  -2,  -2,  -2, -50, -20],
+    [100, -20,  10,   5,   5,  10, -20, 100]
+];
+
+const DIRECTIONS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+];
+
+let board;
+let currentPlayer;
+const playerColor = 1; // 黒
+const aiColor = -1;    // 白
+let difficulty = 'easy';
+let isGameOver = false;
+let calculatedScore = 0;
+
+// 盤面のチェックと有効手割り出し
+function isValidMove(boardState, row, col, color) {
+    if (boardState[row][col] !== 0) return false;
+    let opponent = -color;
+    for (let [dr, dc] of DIRECTIONS) {
+        let r = row + dr;
+        let c = col + dc;
+        let hasOpponentBetween = false;
+        while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+            if (boardState[r][c] === opponent) {
+                hasOpponentBetween = true;
+            } else if (boardState[r][c] === color) {
+                if (hasOpponentBetween) return true;
+                break;
+            } else {
+                break;
+            }
+            r += dr;
+            c += dc;
+        }
+    }
+    return false;
+}
+
+function getValidMoves(boardState, color) {
+    let moves = [];
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if (isValidMove(boardState, r, c, color)) {
+                moves.push({row: r, col: c});
+            }
+        }
+    }
+    return moves;
+}
+
+function makeMove(boardState, row, col, color) {
+    let newBoard = boardState.map(rowArr => [...rowArr]);
+    newBoard[row][col] = color;
+    let opponent = -color;
+    for (let [dr, dc] of DIRECTIONS) {
+        let r = row + dr;
+        let c = col + dc;
+        let cellsToFlip = [];
+        while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+            if (newBoard[r][c] === opponent) {
+                cellsToFlip.push({row: r, col: c});
+            } else if (newBoard[r][c] === color) {
+                for (let cell of cellsToFlip) {
+                    newBoard[cell.row][cell.col] = color;
+                }
+                break;
+            } else {
+                break;
+            }
+            r += dr;
+            c += dc;
+        }
+    }
+    return newBoard;
+}
+
+// ボードの静的評価関数
+function evaluateBoard(boardState, color) {
+    let score = 0;
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if (boardState[r][c] === color) {
+                score += EVAL_MATRIX[r][c];
+            } else if (boardState[r][c] === -color) {
+                score -= EVAL_MATRIX[r][c];
+            }
+        }
+    }
+    return score;
+}
+
+// AI思考アルゴリズム
+function getEasyMove(boardState, color) {
+    let validMoves = getValidMoves(boardState, color);
+    if (validMoves.length === 0) return null;
+    return validMoves[Math.floor(Math.random() * validMoves.length)];
+}
+
+function getMediumMove(boardState, color) {
+    let validMoves = getValidMoves(boardState, color);
+    if (validMoves.length === 0) return null;
+    let bestMove = null;
+    let bestScore = -Infinity;
+    for (let move of validMoves) {
+        let nextBoard = makeMove(boardState, move.row, move.col, color);
+        let score = evaluateBoard(nextBoard, color);
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+        }
+    }
+    return bestMove;
+}
+
+// HARD AI (アルファ・ベータ法: 深さ4)
+function alphaBeta(boardState, depth, alpha, beta, isMaximizing, color) {
+    let validMoves = getValidMoves(boardState, isMaximizing ? color : -color);
+    if (depth === 0 || (validMoves.length === 0 && getValidMoves(boardState, isMaximizing ? -color : color).length === 0)) {
+        return evaluateBoard(boardState, color);
+    }
+    if (validMoves.length === 0) {
+        return alphaBeta(boardState, depth - 1, alpha, beta, !isMaximizing, color);
+    }
+    if (isMaximizing) {
+        let maxEval = -Infinity;
+        for (let move of validMoves) {
+            let nextBoard = makeMove(boardState, move.row, move.col, color);
+            let evaluation = alphaBeta(nextBoard, depth - 1, alpha, beta, false, color);
+            maxEval = Math.max(maxEval, evaluation);
+            alpha = Math.max(alpha, evaluation);
+            if (beta <= alpha) break;
+        }
+        return maxEval;
+    } else {
+        let minEval = Infinity;
+        for (let move of validMoves) {
+            let nextBoard = makeMove(boardState, move.row, move.col, -color);
+            let evaluation = alphaBeta(nextBoard, depth - 1, alpha, beta, true, color);
+            minEval = Math.min(minEval, evaluation);
+            beta = Math.min(beta, evaluation);
+            if (beta <= alpha) break;
+        }
+        return minEval;
+    }
+}
+
+function getHardMove(boardState, color) {
+    let validMoves = getValidMoves(boardState, color);
+    if (validMoves.length === 0) return null;
+    let bestMove = null;
+    let bestScore = -Infinity;
+    let depth = 4;
+    for (let move of validMoves) {
+        let nextBoard = makeMove(boardState, move.row, move.col, color);
+        let score = alphaBeta(nextBoard, depth - 1, -Infinity, Infinity, false, color);
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+        }
+    }
+    return bestMove;
+}
+
+// ==========================================-
+// ゲームの進行ロジック
+// ==========================================-
+function setDifficulty(diff, btn) {
+    difficulty = diff;
+    document.querySelectorAll('.btn-diff').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function initGame() {
+    board = Array(8).fill(null).map(() => Array(8).fill(0));
+    // 初期配置
+    board[3][3] = -1;
+    board[3][4] = 1;
+    board[4][3] = 1;
+    board[4][4] = -1;
+
+    currentPlayer = 1; // 黒がプレイヤー
+    isGameOver = false;
+
+    document.getElementById('ai-level-label').innerText = `AI (${difficulty.toUpperCase()})`;
+    switchPanel('panel-game');
+    
+    generateBoardUI();
+    updateBoardUI();
+}
+
+function generateBoardUI() {
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            cell.addEventListener('click', () => playerClick(r, c));
+            boardEl.appendChild(cell);
+        }
+    }
+}
+
+function updateBoardUI() {
+    const cells = document.querySelectorAll('.cell');
+    let blackCount = 0;
+    let whiteCount = 0;
+    let validMoves = (currentPlayer === playerColor) ? getValidMoves(board, playerColor) : [];
+
+    cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        const val = board[r][c];
+
+        cell.innerHTML = '';
+        cell.classList.remove('valid-move');
+
+        if (val !== 0) {
+            const disc = document.createElement('div');
+            disc.className = `disc ${val === 1 ? 'black' : 'white'}`;
+            cell.appendChild(disc);
+
+            if (val === 1) blackCount++;
+            else whiteCount++;
+        } else {
+            const isValid = validMoves.some(m => m.row === r && m.col === c);
+            if (isValid) {
+                cell.classList.add('valid-move');
+                const dot = document.createElement('div');
+                dot.className = 'valid-dot';
+                cell.appendChild(dot);
+            }
+        }
+    });
+
+    document.getElementById('black-score').innerText = blackCount;
+    document.getElementById('white-score').innerText = whiteCount;
+
+    // ステータス表示更新
+    const turnText = document.getElementById('turn-text');
+    if (currentPlayer === playerColor) {
+        turnText.innerText = "YOUR TURN";
+        turnText.className = "turn-box";
+    } else {
+        turnText.innerText = "AI TURN";
+        turnText.className = "turn-box white-turn";
+    }
+}
+
+function playerClick(r, c) {
+    if (isGameOver || currentPlayer !== playerColor) return;
+    if (!isValidMove(board, r, c, playerColor)) return;
+
+    board = makeMove(board, r, c, playerColor);
+    updateBoardUI();
+
+    currentPlayer = aiColor;
+    
+    // パス判定・AIターンへ移行
+    let aiMoves = getValidMoves(board, aiColor);
+    if (aiMoves.length === 0) {
+        let playerMoves = getValidMoves(board, playerColor);
+        if (playerMoves.length === 0) {
+            setTimeout(endGame, 1000);
+        } else {
+            alert("AI passes! Your turn again.");
+            currentPlayer = playerColor;
+            updateBoardUI();
+        }
+    } else {
+        setTimeout(aiTurn, 600); // 演出のため少し待つ
+    }
+}
+
+function aiTurn() {
+    if (isGameOver) return;
+    
+    let move = null;
+    if (difficulty === 'easy') {
+        move = getEasyMove(board, aiColor);
+    } else if (difficulty === 'medium') {
+        move = getMediumMove(board, aiColor);
+    } else {
+        move = getHardMove(board, aiColor);
+    }
+
+    if (move) {
+        board = makeMove(board, move.row, move.col, aiColor);
+        updateBoardUI();
+    }
+
+    currentPlayer = playerColor;
+    
+    // プレイヤーのパス判定
+    let playerMoves = getValidMoves(board, playerColor);
+    if (playerMoves.length === 0) {
+        let aiMoves = getValidMoves(board, aiColor);
+        if (aiMoves.length === 0) {
+            setTimeout(endGame, 1000);
+        } else {
+            alert("No available moves! You must pass.");
+            currentPlayer = aiColor;
+            updateBoardUI();
+            setTimeout(aiTurn, 600);
+        }
+    } else {
+        updateBoardUI();
+    }
+}
+
+function endGame() {
+    isGameOver = true;
+    switchPanel('panel-result');
+
+    const blackCount = parseInt(document.getElementById('black-score').innerText);
+    const whiteCount = parseInt(document.getElementById('white-score').innerText);
+
+    const statusEl = document.getElementById('result-status');
+    const scoreCalcEl = document.getElementById('result-score-calc');
+    const btnSave = document.getElementById('btn-save-score');
+
+    let multiplier = 10;
+    if (difficulty === 'medium') multiplier = 25;
+    if (difficulty === 'hard') multiplier = 100;
+
+    if (blackCount > whiteCount) {
+        statusEl.innerHTML = "🏆 YOU WIN! 🎉";
+        statusEl.style.color = "#4caf50";
+        calculatedScore = (blackCount - whiteCount) * multiplier;
+        scoreCalcEl.innerHTML = `あなたの勝利!<br>石の差分: (${blackCount} - ${whiteCount}) x 倍率: ${multiplier}<br>獲得ポイント: <strong>${calculatedScore}</strong> pts`;
+        btnSave.style.display = 'block';
+    } else if (whiteCount > blackCount) {
+        statusEl.innerHTML = "💀 AI WINS...";
+        statusEl.style.color = "#f44336";
+        calculatedScore = 0;
+        scoreCalcEl.innerHTML = `AIの勝利です。<br>リーダーボードは勝利時にのみ記録可能です。`;
+        btnSave.style.display = 'none';
+    } else {
+        statusEl.innerHTML = "🤝 DRAW";
+        statusEl.style.color = "#2196f3";
+        calculatedScore = 0;
+        scoreCalcEl.innerHTML = `引き分けです。<br>勝敗が決するまで再挑戦しましょう！`;
+        btnSave.style.display = 'none';
+    }
+}
+
+function quitGame() {
+    if (confirm("ゲームを終了してメイン画面に戻りますか？")) {
+        backToMenu();
+    }
+}
+
+// ==========================================-
+// ⚡ Bitcoin Lightning & リーダーボード 処理
+// ==========================================-
+let checkPaymentInterval = null;
+let currentHash = "";
+
+function openLeaderboardPay() {
+    document.getElementById('result-buttons').style.display = 'none';
+    document.getElementById('lb-invoice-area').style.display = 'block';
+    document.getElementById('lb-qr').src = '';
+    document.getElementById('lb-inv-text').value = 'Generating invoice...';
+
+    // LNbitsからインボイスを発行
+    fetch(LNBITS_API_URL, {
+        method: "POST",
+        headers: {
+            "X-Api-Key": LNBITS_INVOICE_KEY,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            out: false,
+            amount: RECORD_COST_SATS,
+            memo: `Othello Score: ${calculatedScore} (${difficulty.toUpperCase()})`
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("インボイス作成失敗");
+        return res.json();
+    })
+    .then(data => {
+        currentHash = data.payment_hash;
+        const invoice = data.payment_request;
+
+        // UI表示
+        document.getElementById('lb-inv-text').value = invoice;
+        document.getElementById('lb-wallet-link').href = `lightning:${invoice}`;
+        document.getElementById('lb-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=lightning:${invoice}`;
+
+        // WebLN (拡張機能自動送金) があれば利用
+        if (window.webln) {
+            window.webln.enable().then(() => {
+                return window.webln.sendPayment(invoice);
+            }).catch(e => console.log("WebLN skipped: ", e));
+        }
+
+        // モバイル転送
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            setTimeout(() => { window.location.href = `lightning:${invoice}`; }, 800);
+        }
+
+        // 支払い状況をポーリング
+        pollPayment(currentHash);
+    })
+    .catch(err => {
+        alert("インボイス発行に失敗しました。時間をおいて再試行してください。");
+        cancelLbPay();
+    });
+}
+
+function pollPayment(hash) {
+    if (checkPaymentInterval) clearInterval(checkPaymentInterval);
+    checkPaymentInterval = setInterval(() => {
+        fetch(`${LNBITS_API_URL}/${hash}`, {
+            headers: { "X-Api-Key": LNBITS_INVOICE_KEY }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.paid) {
+                clearInterval(checkPaymentInterval);
+                // 支払い完了後の画面切り替え
+                document.getElementById('lb-invoice-area').style.display = 'none';
+                document.getElementById('lb-name-area').style.display = 'block';
+            }
+        })
+        .catch(console.error);
+    }, 3000);
+}
+
+function cancelLbPay() {
+    if (checkPaymentInterval) clearInterval(checkPaymentInterval);
+    document.getElementById('lb-invoice-area').style.display = 'none';
+    document.getElementById('result-buttons').style.display = 'block';
+}
+
+function copyInvoice() {
+    const textEl = document.getElementById('lb-inv-text');
+    textEl.select();
+    document.execCommand('copy');
+    alert("インボイスをクリップボードにコピーしました！");
+}
+
+function submitScore() {
+    const nameInput = document.getElementById('player-name');
+    const name = nameInput.value.trim() || 'Anon';
+    const diffStr = difficulty.toUpperCase();
+
+    if (GAS_URL) {
+        // Google Sheets (GAS) に記録を保存
+        const cbName = 'gasCallback_' + Date.now();
+        const script = document.createElement('script');
+        
+        window[cbName] = function(data) {
+            document.getElementById('lb-name-area').style.display = 'none';
+            document.getElementById('result-buttons').style.display = 'block';
+            nameInput.value = '';
+            showLeaderboard();
+            delete window[cbName];
+            document.body.removeChild(script);
+        };
+
+        script.src = `${GAS_URL}?action=record&name=${encodeURIComponent(name)}&score=${calculatedScore}&diff=${encodeURIComponent(diffStr)}&callback=${cbName}`;
+        document.body.appendChild(script);
+    } else {
+        // GASがない場合、LocalStorageにてランキングを代用
+        let records = JSON.parse(localStorage.getItem('btc_reversi_lb') || '[]');
+        records.push({ name: name, score: calculatedScore, diff: diffStr });
+        records.sort((a, b) => b.score - a.score);
+        records = records.slice(0, 10);
+        localStorage.setItem('btc_reversi_lb', JSON.stringify(records));
+
+        document.getElementById('lb-name-area').style.display = 'none';
+        document.getElementById('result-buttons').style.display = 'block';
+        nameInput.value = '';
+        showLeaderboard();
+    }
+}
+
+function showLeaderboard() {
+    switchPanel('panel-leaderboard');
+    const listEl = document.getElementById('lb-list');
+    listEl.innerHTML = "Loading...";
+
+    if (GAS_URL) {
+        // GASサーバーから取得
+        const cbName = 'gasCallbackLB_' + Date.now();
+        const script = document.createElement('script');
+
+        window[cbName] = function(data) {
+            renderLeaderboardRows(data);
+            delete window[cbName];
+            document.body.removeChild(script);
+        };
+
+        script.src = `${GAS_URL}?action=get&callback=${cbName}`;
+        document.body.appendChild(script);
+    } else {
+        // LocalStorageから取得
+        const data = JSON.parse(localStorage.getItem('btc_reversi_lb') || '[]');
+        renderLeaderboardRows(data);
+    }
+}
+
+function renderLeaderboardRows(data) {
+    const listEl = document.getElementById('lb-list');
+    if (!data || data.length === 0) {
+        listEl.innerHTML = "<div style='color:#777; padding:20px;'>記録がありません。勝利を最初の刻め！</div>";
+        return;
+    }
+
+    let html = "";
+    data.forEach((row, i) => {
+        let rank = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}.`;
+        html += `<div class="lb-row">
+            <span class="lb-rank">${rank} ${escapeHtml(row.name)}</span>
+            <span class="lb-diff">[${row.diff}]</span>
+            <span class="lb-score">${row.score} pts</span>
+        </div>`;
+    });
+    listEl.innerHTML = html;
+}
+
+function escapeHtml(str) {
+    return str.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function backToMenu() {
+    switchPanel('panel-start');
+}
+
+// 自由寄付機能
+function zapDeveloper() {
+    fetch(LNBITS_API_URL, {
+        method: "POST",
+        headers: { "X-Api-Key": LNBITS_INVOICE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ out: false, amount: 10, memo: "Support Bitcoin Othello Creator! ⚡" })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const invoice = data.payment_request;
+        if (window.webln) {
+            window.webln.enable().then(() => window.webln.sendPayment(invoice)).catch(() => {});
+        } else {
+            window.location.href = `lightning:${invoice}`;
+        }
+    }).catch(() => {});
+}
+
+function shareTwitter() {
+    const text = `⚡ BITCOIN OTHELLO ⚡\n難易度 ${difficulty.toUpperCase()} のAIを倒して ${calculatedScore} ポイントを獲得しました！\n避けて通れぬAIの計略を打ち破れるか？ 👇\n#Bitcoin #LightningNetwork #オセロ`;
+    const appUrl = window.location.href.split('?')[0];
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(appUrl)}`, '_blank');
+}
+
+// ----------------------------------------------------
+// UIヘルパー
+// ----------------------------------------------------
+function switchPanel(panelId) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+}
+</script>
+</body>
+</html>
